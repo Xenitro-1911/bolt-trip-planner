@@ -25,8 +25,7 @@ on my own experience as a regular Bolt user in Tallinn.
 
 ## 🚀 Live Demo
 
-👉 **[bolt-trip-planner.vercel.app](#)**  
-*(replace with your actual Vercel URL)*
+👉 **[intermodal-trip-planner.vercel.app](https://intermodal-trip-planner.vercel.app/)**
 
 **Try these routes:**
 | From | To | Result |

@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bolt Trip Planner — Tallinn</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --green: #34D186;
+      --green-dark: #28a96c;
+      --green-glow: rgba(52, 209, 134, 0.15);
+      --bg: #0d0d0d;
+      --surface: #161616;
+      --surface-2: #1e1e1e;
+      --border: #2a2a2a;
+      --text: #f0f0f0;
+      --text-muted: #888;
+      --red: #ff5c5c;
+      --radius: 12px;
+    }
+
+    html { font-size: 16px; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+      padding: 24px 16px 48px;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+    .logo {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .logo-icon {
+      width: 40px; height: 40px;
+      background: var(--green);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px;
+    }
+    .logo-text {
+      font-size: 1.6rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .logo-text span { color: var(--green); }
+    header p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      max-width: 560px;
+      margin: 0 auto 20px;
+    }
+
+    /* ── Form ── */
+    .form-card { padding: 24px; }
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+    .input-with-icon {
+      position: relative;
+    }
+    .input-with-icon .icon {
+      position: absolute;
+      left: 12px; top: 50%;
+      transform: translateY(-50%);
+      font-size: 16px;
+      pointer-events: none;
+    }
+    .input-with-icon input {
+      width: 100%;
+      padding: 12px 12px 12px 38px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .input-with-icon input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px var(--green-glow);
+    }
+    .input-with-icon input::placeholder { color: var(--text-muted); }
+
+    .route-connector {
+      margin: 4px 0 4px 18px;
+    }
+    .connector-line {
+      width: 2px;
+      height: 20px;
+      background: var(--border);
+      margin-left: 6px;
+    }
+
+    .btn-primary {
+      width: 100%;
+      padding: 14px;
+      background: var(--green);
+      color: #000;
+      font-size: 1rem;
+      font-weight: 700;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      display: flex; align-items: center; justify-content: center;
+      gap: 8px;
+      margin-top: 8px;
+    }
+    .btn-primary:hover:not(:disabled) { background: var(--green-dark); }
+    .btn-primary:active:not(:disabled) { transform: scale(0.98); }
+    .btn-primary:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    /* ── Loading spinner ── */
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2.5px solid rgba(0,0,0,0.25);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error ── */
+    .error-box {
+      background: rgba(255, 92, 92, 0.1);
+      border: 1px solid rgba(255, 92, 92, 0.3);
+      border-radius: 10px;
+      padding: 14px 16px;
+      color: var(--red);
+      font-size: 0.88rem;
+      display: flex; gap: 10px; align-items: flex-start;
+      max-width: 560px;
+      margin: 0 auto 20px;
+    }
+    .error-box .err-icon { flex-shrink: 0; font-size: 16px; margin-top: 1px; }
+
+    /* ── Results card ── */
+    .results-card { padding: 24px; }
+    .results-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 24px;
+    }
+    .results-header h2 { font-size: 1.05rem; font-weight: 700; }
+    .results-header p  { font-size: 0.82rem; color: var(--text-muted); margin-top: 3px; }
+
+    .totals { text-align: right; }
+    .totals .total-time {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--green);
+      line-height: 1;
+    }
+    .totals .total-cost {
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      margin-top: 4px;
+    }
+
+    /* ── Leg steps ── */
+    .legs { display: flex; flex-direction: column; }
+
+    .leg {
+      display: flex;
+      gap: 16px;
+      /* entrance animation — starts invisible and shifted down */
+      opacity: 0;
+      transform: translateY(14px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+    .leg.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .leg-timeline {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex-shrink: 0;
+      width: 44px;
+    }
+    .leg-dot {
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 2px solid var(--border);
+    }
+    .leg-dot.scooter { background: rgba(52, 209, 134, 0.15); border-color: var(--green); }
+    .leg-dot.transit { background: rgba(100, 149, 237, 0.15); border-color: #6495ed; }
+    .leg-dot.ride    { background: rgba(255, 165,   0, 0.15); border-color: #ffa500; }
+
+    .leg-line {
+      width: 2px;
+      flex: 1;
+      min-height: 20px;
+      background: var(--border);
+      margin: 5px 0;
+    }
+
+    .leg-content {
+      flex: 1;
+      padding-bottom: 24px;
+    }
+    .leg:last-child .leg-content { padding-bottom: 0; }
+    .leg:last-child .leg-line { display: none; }
+
+    .leg-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 6px;
+    }
+    .leg-mode {
+      font-size: 0.7rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      padding: 3px 9px;
+      border-radius: 20px;
+    }
+    .leg-mode.scooter { background: rgba(52, 209, 134, 0.15); color: var(--green); }
+    .leg-mode.transit { background: rgba(100, 149, 237, 0.15); color: #6495ed; }
+    .leg-mode.ride    { background: rgba(255, 165,   0, 0.15); color: #ffa500; }
+
+    .leg-meta {
+      display: flex; gap: 12px;
+      font-size: 0.82rem;
+      color: var(--text-muted);
+    }
+    .leg-meta strong { color: var(--text); }
+
+    .leg-route {
+      font-size: 0.95rem;
+      font-weight: 600;
+      margin-bottom: 4px;
+    }
+    .leg-route .arrow { color: var(--text-muted); font-weight: 400; margin: 0 6px; }
+
+    .leg-instructions {
+      font-size: 0.83rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* ── Divider between legs ── */
+    .leg-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0 0 0 60px;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .leg-divider.visible { opacity: 1; }
+
+    /* ── Summary box ── */
+    .summary-box {
+      background: var(--green-glow);
+      border: 1px solid rgba(52, 209, 134, 0.25);
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-top: 20px;
+      font-size: 0.88rem;
+      color: var(--text-muted);
+      line-height: 1.55;
+      opacity: 0;
+      transform: translateY(10px);
+      transition: opacity 0.4s ease 0.1s, transform 0.4s ease 0.1s;
+    }
+    .summary-box.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .summary-box strong { color: var(--green); }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      margin-top: 32px;
+      font-size: 0.75rem;
+      color: #444;
+    }
+
+    /* ── Utilities ── */
+    .hidden { display: none !important; }
+
+    @media (max-width: 400px) {
+      .results-header { flex-direction: column; gap: 12px; }
+      .totals { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="logo">
+      <div class="logo-icon">⚡</div>
+      <div class="logo-text"><span>Bolt</span> Trip Planner</div>
+    </div>
+    <p>Intermodal routes in Tallinn, Estonia</p>
+  </header>
+
+  <!-- ── Planner Form ── -->
+  <div class="card form-card">
+    <div class="form-group">
+      <label for="startInput">From</label>
+      <div class="input-with-icon">
+        <span class="icon">📍</span>
+        <input
+          type="text"
+          id="startInput"
+          placeholder="e.g. Viru Keskus, Tallinn"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+
+    <div class="route-connector">
+      <div class="connector-line"></div>
+    </div>
+
+    <div class="form-group">
+      <label for="endInput">To</label>
+      <div class="input-with-icon">
+        <span class="icon">🏁</span>
+        <input
+          type="text"
+          id="endInput"
+          placeholder="e.g. Ülemiste City, Tallinn"
+          autocomplete="off"
+        />
+      </div>
+    </div>
+
+    <button class="btn-primary" id="findRouteBtn">
+      <span>Find Best Route</span>
+    </button>
+  </div>
+
+  <!-- ── Error ── -->
+  <div class="error-box hidden" id="errorBox">
+    <span class="err-icon">⚠️</span>
+    <span id="errorMsg"></span>
+  </div>
+
+  <!-- ── Results ── -->
+  <div class="card results-card hidden" id="resultsCard">
+    <div class="results-header">
+      <div>
+        <h2>Suggested Route</h2>
+        <p id="routeSubtitle"></p>
+      </div>
+      <div class="totals">
+        <div class="total-time" id="totalTime">24 min</div>
+        <div class="total-cost" id="totalCost">≈ €5.70 total</div>
+      </div>
+    </div>
+
+    <div class="legs" id="legsContainer"></div>
+
+    <div class="summary-box" id="summaryBox"></div>
+  </div>
+
+  <footer>
+    Bolt Trip Planner &nbsp;·&nbsp; Tallinn, Estonia
+  </footer>
+
+  <script>
+    // ── Hardcoded route data ──────────────────────────────────────────────────
+    const ROUTE_DEFAULT = {
+      total_duration_minutes: 24,
+      total_cost_eur: 5.70,
+      summary: "This intermodal route keeps you moving efficiently — the scooter gets you to the tram fast, Line 2 avoids Old Town traffic, and a short Bolt ride drops you right at the door.",
+      legs: [
+        {
+          mode: "scooter",
+          from: "Viru Keskus",
+          to: "Hobujaama tram stop",
+          duration_minutes: 7,
+          cost_eur: 1.50,
+          instructions: "Unlock a Bolt scooter outside Viru Keskus and ride along Narva mnt for ~600 m to the Hobujaama tram stop. Keep to the right-side bike lane.",
+        },
+        {
+          mode: "transit",
+          from: "Hobujaama",
+          to: "Ülemiste",
+          duration_minutes: 12,
+          cost_eur: 1.00,
+          line: "Tram Line 2",
+          instructions: "Board Tram Line 2 towards Ülemiste. Ride 8 stops through the city centre and Kesklinn district. Tap your Ühiskaart or pay in-app.",
+        },
+        {
+          mode: "ride",
+          from: "Ülemiste tram stop",
+          to: "Ülemiste City",
+          duration_minutes: 5,
+          cost_eur: 3.20,
+          instructions: "Request a Bolt ride from the tram stop — your driver will arrive in ~2 min. The car takes Lõõtsa tänav directly to your destination entrance.",
+        },
+      ],
+    };
+
+    const ROUTE_MUSTAMAE = {
+      total_duration_minutes: 26,
+      total_cost_eur: 6.00,
+      summary: "Tram Line 3 is the fastest connection from Järve to Ülemiste with no transfers — pair it with a scooter from Mustamäe and a short Bolt ride to reach Bolt HQ on Vana-Lõuna 15 in style.",
+      legs: [
+        {
+          mode: "scooter",
+          from: "Mustamäe tee 149",
+          to: "Järve tram stop",
+          duration_minutes: 5,
+          cost_eur: 1.20,
+          instructions: "Grab a Bolt scooter right outside Mustamäe tee 149 and follow Mustamäe tee south for ~450 m to the Järve tram stop. Lock it at the rack next to the stop.",
+        },
+        {
+          mode: "transit",
+          from: "Järve",
+          to: "Ülemiste",
+          duration_minutes: 14,
+          cost_eur: 1.00,
+          line: "Tram Line 3",
+          instructions: "Board Tram Line 3 heading towards Ülemiste. Ride 10 stops along Järvevana tee — no transfers needed. Validate your ticket or tap your Ühiskaart on boarding.",
+        },
+        {
+          mode: "ride",
+          from: "Ülemiste tram stop",
+          to: "Bolt HQ, Vana-Lõuna 15",
+          duration_minutes: 7,
+          cost_eur: 3.80,
+          instructions: "Request a Bolt ride from the Ülemiste stop. Your driver will take Vana-Lõuna tänav directly to Bolt HQ — look for the green Bolt signage at number 15.",
+        },
+      ],
+    };
+
+    // Returns the matching route based on start/end text (case-insensitive)
+    function pickRoute(start, end) {
+      const s = start.toLowerCase();
+      const e = end.toLowerCase();
+      if ((s.includes("mustamäe") || s.includes("mustamae")) &&
+          (e.includes("bolt") || e.includes("hq") || e.includes("vana"))) return ROUTE_MUSTAMAE;
+      return ROUTE_DEFAULT;
+    }
+
+    const MODE_CONFIG = {
+      scooter: { icon: "🛴", label: "Bolt Scooter", className: "scooter" },
+      transit: { icon: "🚌", label: "Public Transit", className: "transit" },
+      ride:    { icon: "🚗", label: "Bolt Ride",     className: "ride"    },
+    };
+
+    // ── DOM refs ─────────────────────────────────────────────────────────────
+    const startInput    = document.getElementById("startInput");
+    const endInput      = document.getElementById("endInput");
+    const findRouteBtn  = document.getElementById("findRouteBtn");
+    const errorBox      = document.getElementById("errorBox");
+    const errorMsg      = document.getElementById("errorMsg");
+    const resultsCard   = document.getElementById("resultsCard");
+    const legsContainer = document.getElementById("legsContainer");
+    const routeSubtitle = document.getElementById("routeSubtitle");
+    const summaryBox    = document.getElementById("summaryBox");
+
+    // ── Event listeners ───────────────────────────────────────────────────────
+    findRouteBtn.addEventListener("click", handleFindRoute);
+    [startInput, endInput].forEach(el => {
+      el.addEventListener("keydown", e => { if (e.key === "Enter") handleFindRoute(); });
+    });
+
+    // ── Main handler ──────────────────────────────────────────────────────────
+    function handleFindRoute() {
+      const start = startInput.value.trim();
+      const end   = endInput.value.trim();
+
+      if (!start) return showError("Please enter a starting location.");
+      if (!end)   return showError("Please enter a destination.");
+      if (start.toLowerCase() === end.toLowerCase()) {
+        return showError("Start and destination appear to be the same place.");
+      }
+
+      hideError();
+      hideResults();
+      setLoading(true);
+
+      // Simulate a 2-second planning delay, then render
+      const route = pickRoute(start, end);
+      setTimeout(() => {
+        setLoading(false);
+        renderResults(route, start, end);
+      }, 2000);
+    }
+
+    // ── Render + staggered animation ──────────────────────────────────────────
+    function renderResults(route, start, end) {
+      routeSubtitle.textContent = `${start} → ${end}`;
+      document.getElementById("totalTime").textContent = `${route.total_duration_minutes} min`;
+      document.getElementById("totalCost").textContent = `≈ €${route.total_cost_eur.toFixed(2)} total`;
+      legsContainer.innerHTML   = "";
+      summaryBox.classList.remove("visible");
+
+      // Build all leg elements (initially invisible via CSS opacity:0)
+      const legEls = route.legs.map((leg, idx) => {
+        const cfg      = MODE_CONFIG[leg.mode];
+        const isLast   = idx === route.legs.length - 1;
+        const modeName = (leg.mode === "transit" && leg.line)
+          ? `${cfg.label} · ${leg.line}`
+          : cfg.label;
+
+        const legEl = document.createElement("div");
+        legEl.className = "leg";
+        legEl.innerHTML = `
+          <div class="leg-timeline">
+            <div class="leg-dot ${cfg.className}">${cfg.icon}</div>
+            ${!isLast ? '<div class="leg-line"></div>' : ""}
+          </div>
+          <div class="leg-content">
+            <div class="leg-header">
+              <span class="leg-mode ${cfg.className}">${modeName}</span>
+              <div class="leg-meta">
+                <span>⏱ <strong>${leg.duration_minutes} min</strong></span>
+                <span>💶 <strong>€${leg.cost_eur.toFixed(2)}</strong></span>
+              </div>
+            </div>
+            <div class="leg-route">
+              ${esc(leg.from)}<span class="arrow">→</span>${esc(leg.to)}
+            </div>
+            <div class="leg-instructions">${esc(leg.instructions)}</div>
+          </div>
+        `;
+        legsContainer.appendChild(legEl);
+        return legEl;
+      });
+
+      summaryBox.innerHTML = `<strong>💡 Route tip:</strong> ${esc(route.summary)}`;
+      resultsCard.classList.remove("hidden");
+
+      // Scroll into view, then stagger each leg appearing
+      setTimeout(() => {
+        resultsCard.scrollIntoView({ behavior: "smooth", block: "start" });
+
+        legEls.forEach((el, i) => {
+          setTimeout(() => {
+            el.classList.add("visible");
+            // Reveal summary after the last leg
+            if (i === legEls.length - 1) {
+              setTimeout(() => summaryBox.classList.add("visible"), 250);
+            }
+          }, i * 300); // 300 ms between each leg
+        });
+      }, 60);
+    }
+
+    // ── UI helpers ────────────────────────────────────────────────────────────
+    function setLoading(on) {
+      findRouteBtn.disabled = on;
+      findRouteBtn.innerHTML = on
+        ? `<div class="spinner"></div><span>Planning your route…</span>`
+        : `<span>Find Best Route</span>`;
+    }
+
+    function showError(msg) {
+      errorMsg.textContent = msg;
+      errorBox.classList.remove("hidden");
+    }
+
+    function hideError()   { errorBox.classList.add("hidden"); }
+    function hideResults() { resultsCard.classList.add("hidden"); }
+
+    function esc(str) {
+      return String(str ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+    }
+  </script>
+</body>
+</html>
